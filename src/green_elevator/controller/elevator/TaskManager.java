@@ -1,7 +1,72 @@
 package green_elevator.controller.elevator;
 
+import green_elevator.controller.elevator.Elevator.Direction;
+import green_elevator.controller.elevator.task.Task;
+import green_elevator.controller.message.Message;
+import green_elevator.controller.message.Message.MessageType;
+
+import java.util.Optional;
+
 public class TaskManager {
 
-    private
-    
+    public void addTask(Message command) {
+	// Pseudo Code
+	// Pick up present position and direction data.
+	if (notOpenfornewcommands) {
+	    return;
+	}
+	if (command.getMessageType() == MessageType.STOPMESSAGE) {
+	    // set no open for new commands
+	}
+	if (command.getMessageType() == MessageType.INSIDEMESSAGE) {
+	    Direction direction;
+	    // check if goalfloor is compatible with the postion and direction
+	    // of the elevator
+	    // discard otherwicw
+	}
+	if (command.getMessageType() == MessageType.OUTSIDEMESSAGE) {
+	    // add allways
+	}
+    }
+
+    public int getNumberOfTasks() {
+	// useful for evaluator
+    }
+
+    public Optional<Task> getTask() {
+	// TODO implement
+	// PriorityList
+	// (1) stop tasks --if stop -stop the posibility to add new tasks to
+	// this elevator
+	// (2) inside commands such as same direction,
+	//
+	// (3) outside commands
+	// only if goalFloor and Direction is compatible with the elevators
+	// postiond direction AND goalFloor
+	return null;
+    }
+
+    /**
+     * Evaluates if the elevator should stop at next floor given the position
+     * direction and goalFloor of the elevator
+     * 
+     * @param position
+     *            of the asking elevator
+     * @param direction
+     *            of the asking elevator
+     * @param goalFloor
+     *            of the asking elevator
+     * @return
+     */
+    public boolean shouldStop(double position, Elevator.Direction direction, int goalFloor) {
+	// TODO implement
+	// check if compatible with any task
+	// remove all tasks fulfilled by this stop
+	return false;
+    }
+
+    private void removeTask() {
+
+    }
+
 }

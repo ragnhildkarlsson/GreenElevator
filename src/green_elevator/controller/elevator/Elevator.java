@@ -15,6 +15,7 @@ public class Elevator implements Runnable {
 
     private int goalFloor;
 
+    private Lock directionLock = new ReentrantLock();
     private Direction direction;
 
     private TaskManager taskManager;
@@ -28,7 +29,7 @@ public class Elevator implements Runnable {
 	consumedPosition = true;
 	acceptingNewPositons = false;
 	direction = Direction.STATIC;
-	goalFloor
+	goalFloor = -1;
     }
 
     @Override
