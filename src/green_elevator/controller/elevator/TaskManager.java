@@ -20,9 +20,9 @@ public class TaskManager {
 	}
 	if (command.getMessageType() == MessageType.INSIDEMESSAGE) {
 	    Direction direction;
-	    // check if goalfloor is compatible with the postion and direction
+	    // check if goal floor is compatible with the position and direction
 	    // of the elevator
-	    // discard otherwicw
+	    // discard otherwise
 	}
 	if (command.getMessageType() == MessageType.OUTSIDEMESSAGE) {
 	    // add allways
@@ -36,13 +36,13 @@ public class TaskManager {
     public Optional<Task> getTask() {
 	// TODO implement
 	// PriorityList
-	// (1) stop tasks --if stop -stop the posibility to add new tasks to
+	// (1) stop tasks --if stop -stop the possibility to add new tasks to
 	// this elevator
 	// (2) inside commands such as same direction,
 	//
 	// (3) outside commands
 	// only if goalFloor and Direction is compatible with the elevators
-	// postiond direction AND goalFloor
+	// postions direction AND goalFloor
 	return null;
     }
 

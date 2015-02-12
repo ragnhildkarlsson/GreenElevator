@@ -1,5 +1,6 @@
 package green_elevator.controller.elevator;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -8,7 +9,7 @@ public class Elevator implements Runnable {
 
     final Lock positionLock = new ReentrantLock();
     private boolean consumedPosition;
-    private boolean acceptingNewPositons;
+    private AtomicBoolean acceptingNewPositons;
     final Condition elevatorConsumedPosition = positionLock.newCondition();
     final Condition newPositionAvailable = positionLock.newCondition();
     private double position;
@@ -27,14 +28,19 @@ public class Elevator implements Runnable {
     public Elevator(TaskManager taskManager) {
 	this.taskManager = taskManager;
 	consumedPosition = true;
-	acceptingNewPositons = false;
+	acceptingNewPositons.set(false);
 	direction = Direction.STATIC;
 	goalFloor = -1;
     }
 
     @Override
     public void run() {
-	// TODO Auto-generated method stub
+	// Task --loop
+	// wait for available task (if no task is available change direction to
+	// static)
+	// Fulfill task
+	// moveToGoalFloor() || or stopElevator()
+	//
 
     }
 
@@ -51,16 +57,26 @@ public class Elevator implements Runnable {
 	}
     }
 
+    private void moveToGoalFloor() {
+	// send command to start elevator
+	// loop-for checking position
+	// for each place close to floor check shouldStop
+	// if stop on goal floor set goal floor to -1 return.
+    }
+
     public void updatePosition(double position) throws InterruptedException {
+	if (!acceptingNewPositons.get()) {
+	    return;
+	}
 	positionLock.lock();
 	try {
 	    // If the elevator has sent a stop command no new position data is
 	    // relevant
-	    if (!acceptingNewPositons) {
-		return;
-	    }
 	    while (!consumedPosition)
 		elevatorConsumedPosition.await();
+	    if (!acceptingNewPositons.get()) {
+		return;
+	    }
 	    consumedPosition = false;
 	    this.position = position;
 	    newPositionAvailable.signalAll();
@@ -79,4 +95,17 @@ public class Elevator implements Runnable {
 	}
     }
 
+    private void setAcceptingNewPositions(boolean value) {
+	if (value == acceptingNewPositons.get()) {
+	    return;
+	}
+	if (value == false) {
+	    acceptingNewPositons.set(false);
+	    elevatorConsumedPosition.signal();
+
+	}
+	if (value == true) {
+	    acceptingNewPositons.set(true);
+	}
+    }
 }
