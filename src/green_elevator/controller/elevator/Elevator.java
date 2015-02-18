@@ -7,6 +7,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Elevator implements Runnable {
 
+    private final int id;
     final Lock positionLock = new ReentrantLock();
     private boolean consumedPosition;
     private AtomicBoolean acceptingNewPositons;
@@ -25,7 +26,8 @@ public class Elevator implements Runnable {
 	UP, DOWN, STATIC
     }
 
-    public Elevator(TaskManager taskManager) {
+    public Elevator(TaskManager taskManager, int id) {
+	this.id = id;
 	this.taskManager = taskManager;
 	consumedPosition = true;
 	acceptingNewPositons.set(false);

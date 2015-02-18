@@ -1,9 +1,7 @@
 package green_elevator.controller.elevator;
 
-import green_elevator.controller.elevator.Elevator.Direction;
 import green_elevator.controller.elevator.task.Task;
 import green_elevator.controller.message.Message;
-import green_elevator.controller.message.Message.MessageType;
 
 import java.util.Optional;
 
@@ -12,25 +10,26 @@ public class TaskManager {
     public void addTask(Message command) {
 	// Pseudo Code
 	// Pick up present position and direction data.
-	if (notOpenfornewcommands) {
-	    return;
-	}
-	if (command.getMessageType() == MessageType.STOPMESSAGE) {
-	    // set no open for new commands
-	}
-	if (command.getMessageType() == MessageType.INSIDEMESSAGE) {
-	    Direction direction;
-	    // check if goal floor is compatible with the position and direction
-	    // of the elevator
-	    // discard otherwise
-	}
-	if (command.getMessageType() == MessageType.OUTSIDEMESSAGE) {
-	    // add allways
-	}
+	// if (notOpenfornewcommands) {
+	// return;
+	// }
+	// if (command.getMessageType() == MessageType.STOPMESSAGE) {
+	// // set no open for new commands
+	// }
+	// if (command.getMessageType() == MessageType.INSIDEMESSAGE) {
+	// Direction direction;
+	// // check if goal floor is compatible with the position and direction
+	// // of the elevator
+	// // discard otherwise
+	// }
+	// if (command.getMessageType() == MessageType.OUTSIDEMESSAGE) {
+	// // add allways
+	// }
     }
 
     public int getNumberOfTasks() {
 	// useful for evaluator
+	return 0;
     }
 
     public Optional<Task> getTask() {

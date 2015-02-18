@@ -3,7 +3,7 @@ package green_elevator.controller.message;
 public interface Message {
 
     public enum MessageType {
-	POSITION, VELOCITY, STOPCOMMAND, INSIDECOMMAND, OUTSIDECOMMAND
+	POSITIONMESSAGE, VELOCITY, STOPMESSAGE, INSIDECOMMAND, OUTSIDECOMMAND, MOVECOMMAND
     }
 
     public MessageType getMessageType();
