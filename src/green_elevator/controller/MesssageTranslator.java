@@ -7,10 +7,24 @@ import green_elevator.controller.message.Message.MessageType;
 import green_elevator.controller.message.MoveCommand;
 import green_elevator.controller.message.OutsideMessage;
 import green_elevator.controller.message.PositionMessage;
+import green_elevator.controller.message.StopCommand;
 
 import java.util.Optional;
 
 public class MesssageTranslator {
+
+    public Optional<String> getMessageString(Message message) {
+	switch (message.getMessageType()) {
+	case MOVECOMMAND:
+	    MoveCommand moveCommand = (MoveCommand) message;
+	    return Optional.of("m " + moveCommand.getElevatorNumber() + " " + moveCommand.getDirection());
+	case STOPCOMMAND:
+	    StopCommand stopCommand = (StopCommand) message;
+	    return Optional.of("m " + stopCommand.getElevatorNumber() + " " + 0);
+	default:
+	    return Optional.empty();
+	}
+    }
 
     public Optional<Message> getMessage(String input) {
 	// TODO implement verlocity and stopbuttonmessage
@@ -40,12 +54,6 @@ public class MesssageTranslator {
 		double position = Double.parseDouble(messageWords[2]);
 		message = new PositionMessage(elevatorNumber, position);
 		return Optional.of(message);
-	    case MOVECOMMAND:
-		messageWords = input.split(" ");
-		elevatorNumber = Integer.parseInt(messageWords[1]);
-		direction = getDirection(Integer.parseInt(messageWords[2])).get();
-		message = new MoveCommand(elevatorNumber, direction);
-		return Optional.of(message);
 	    default:
 		return Optional.empty();
 	    }
@@ -61,11 +69,10 @@ public class MesssageTranslator {
 	if (input.contains("b")) {
 	    return Optional.of(MessageType.OUTSIDECOMMAND);
 	}
+
 	if (input.contains("f")) {
 	    return Optional.of(MessageType.POSITIONMESSAGE);
-	}
-	if (input.contains("m")) {
-	    return Optional.of(MessageType.MOVECOMMAND);
+
 	}
 	return Optional.empty();
 
