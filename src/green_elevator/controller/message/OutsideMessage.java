@@ -14,7 +14,7 @@ public class OutsideMessage implements Message {
 
     @Override
     public MessageType getMessageType() {
-	return MessageType.OUTSIDECOMMAND;
+	return MessageType.OUTSIDEMESSAGE;
     }
 
     public int getFloorNumber() {

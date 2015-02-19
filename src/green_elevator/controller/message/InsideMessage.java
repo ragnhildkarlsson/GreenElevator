@@ -13,7 +13,7 @@ public class InsideMessage implements Message {
 
     @Override
     public MessageType getMessageType() {
-	return MessageType.INSIDECOMMAND;
+	return MessageType.INSIDEMESSAGE;
     }
 
     public int getElevatorNumber() {
