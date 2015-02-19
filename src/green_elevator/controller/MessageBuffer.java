@@ -42,5 +42,6 @@ public class MessageBuffer {
 	    // TODO Auto-generated catch block
 	    e.printStackTrace();
 	}
+	throw new IllegalStateException();
     }
 }
