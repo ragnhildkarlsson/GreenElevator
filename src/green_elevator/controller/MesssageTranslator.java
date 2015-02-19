@@ -36,13 +36,13 @@ public class MesssageTranslator {
 	    Direction direction;
 	    Message message;
 	    switch (messageType) {
-	    case INSIDECOMMAND:
+	    case INSIDEMESSAGE:
 		messageWords = input.split(" ");
 		elevatorNumber = Integer.parseInt(messageWords[1]);
 		floorNumber = Integer.parseInt(messageWords[2]);
 		message = new InsideMessage(elevatorNumber, floorNumber);
 		return Optional.of(message);
-	    case OUTSIDECOMMAND:
+	    case OUTSIDEMESSAGE:
 		messageWords = input.split(" ");
 		floorNumber = Integer.parseInt(messageWords[1]);
 		direction = getDirection(Integer.parseInt(messageWords[2])).get();
@@ -64,10 +64,10 @@ public class MesssageTranslator {
 
     private Optional<MessageType> getMessageType(String input) {
 	if (input.contains("p")) {
-	    return Optional.of(MessageType.INSIDECOMMAND);
+	    return Optional.of(MessageType.INSIDEMESSAGE);
 	}
 	if (input.contains("b")) {
-	    return Optional.of(MessageType.OUTSIDECOMMAND);
+	    return Optional.of(MessageType.OUTSIDEMESSAGE);
 	}
 
 	if (input.contains("f")) {

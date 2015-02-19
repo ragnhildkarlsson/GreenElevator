@@ -8,74 +8,69 @@ import green_elevator.controller.message.Message;
 import green_elevator.controller.message.Message.MessageType;
 import green_elevator.controller.message.OutsideMessage;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 
 public class TaskManager {
 
-	private final Lock taskLock;
-	private final Condition taskAvailable;
 	private boolean notOpenForCommands;
-	private List<Task> tasks;
+	private BlockingQueue<Task> tasks;
 	private int taskId;
+	private Semaphore availableTask;
 
 	public TaskManager() {
 		this.notOpenForCommands = false;
-		this.tasks = new ArrayList<Task>();
+		this.tasks = new LinkedBlockingQueue<Task>();
 		this.taskId = 0;
-		this.taskLock = new ReentrantLock();
-		this.taskAvailable = taskLock.newCondition();
+		this.availableTask = new Semaphore(0);
 	}
 
-	public void addTask(Message command, double currentPosition, int goalFloor, Direction direction) {
-		taskLock.lock();
+	public boolean addTask(Message command, double currentPosition, int goalFloor, Direction direction) {
 
 		if (notOpenForCommands)
-			return;
+			return false;
 
-		if (command.getMessageType() == MessageType.STOPCOMMAND) {
+		if (command.getMessageType() == MessageType.STOPMESSAGE) {
 			notOpenForCommands = true;
-			return;
+			return false;
 		}
 
-		if (command.getMessageType() == MessageType.INSIDECOMMAND) {
+		if (command.getMessageType() == MessageType.INSIDEMESSAGE) {
 			InsideMessage insideMessage = (InsideMessage) command;
 			int wantedFloor = insideMessage.getFloorNumber();
-			switch (direction) {
-			case STATIC: // static direction means all inside commands are okay
-				tasks.add(new Task(getTaskID(), TaskType.INSIDETASK, Optional.empty(), Optional.of(wantedFloor)));
-				taskAvailable.signal();
-				break;
-			case UP:
-				int lowestFloor = Math.min(goalFloor, (int) currentPosition);
-				if (lowestFloor < wantedFloor) {
-					tasks.add(new Task(getTaskID(), TaskType.INSIDETASK, Optional.empty(), Optional.of(wantedFloor)));
-					taskAvailable.signal();
+			try {
+				switch (direction) {
+				case STATIC: // static direction means all inside commands are okay
+					tasks.put(new Task(getTaskID(), TaskType.INSIDETASK, Optional.empty(), wantedFloor));
+					break;
+				case UP:
+					int lowestFloor = Math.min(goalFloor, (int) Math.round(currentPosition));
+					if (lowestFloor < wantedFloor) {
+						tasks.put(new Task(getTaskID(), TaskType.INSIDETASK, Optional.empty(), wantedFloor));
+					}
+					break;
+				case DOWN:
+					int highestFloor = Math.max(goalFloor, (int) Math.round(currentPosition));
+					if (highestFloor > wantedFloor) {
+						tasks.put(new Task(getTaskID(), TaskType.INSIDETASK, Optional.empty(), wantedFloor));
+					}
+					break;
 				}
-				break;
-			case DOWN:
-				int highestFloor = Math.max(goalFloor, (int) currentPosition);
-				if (highestFloor > wantedFloor) {
-					tasks.add(new Task(getTaskID(), TaskType.INSIDETASK, Optional.empty(), Optional.of(wantedFloor)));
-					taskAvailable.signal();
-				}
-				break;
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
 		}
 
-		if (command.getMessageType() == MessageType.OUTSIDECOMMAND) {
+		if (command.getMessageType() == MessageType.OUTSIDEMESSAGE) {
 			OutsideMessage outsideMessage = (OutsideMessage) command;
 			int wantedFloor = outsideMessage.getFloorNumber();
-			tasks.add(new Task(getTaskID(), TaskType.OUTSIDETASK, Optional.empty(), Optional.of(wantedFloor)));
-			taskAvailable.signal();
+			tasks.add(new Task(getTaskID(), TaskType.OUTSIDETASK, Optional.empty(), wantedFloor));
 		}
-
-		taskLock.unlock();
+		availableTask.release();
+		return true;
 	}
 
 	private int getTaskID() {
@@ -84,9 +79,7 @@ public class TaskManager {
 	}
 
 	public int getNumberOfTasks() {
-		taskLock.lock();
 		int size = tasks.size();
-		taskLock.unlock();
 		return size;
 
 	}
@@ -96,41 +89,22 @@ public class TaskManager {
 	 * 
 	 * @return
 	 */
-	public Optional<Task> getTask(Optional<Direction> direction) {
-
-		taskLock.lock();
+	public Task getTask() {
 		try {
-			while (tasks.size() == 0)
-				taskAvailable.wait();
+			availableTask.acquire();
 
-			// try to first find inside commands matching the current direction TODO do I have to check direction?
-			if (direction.isPresent())
-				for (Task task : tasks) {
-					if ((task.getTaskType() == TaskType.INSIDETASK))
-						return Optional.of(task);
-
-				}
-
-			// Get any outside task with any direction?
-
-			// Worst case: inside task with wrong direction!?
+			// try to first find inside commands
+			for (Task task : tasks) {
+				if ((task.getTaskType() == TaskType.INSIDETASK))
+					return task;
+			}
+			// Get any task
+			return tasks.take();
 
 		} catch (InterruptedException e) {
 			e.printStackTrace();
-		} finally {
-			taskLock.unlock();
 		}
-
-		// TODO implement
-		// PriorityList
-		// (1) stop tasks --if stop -stop the possibility to add new tasks to
-		// this elevator
-		// (2) inside commands such as same direction,
-		//
-		// (3) outside commands
-		// only if goalFloor and Direction is compatible with the elevators
-		// postions direction AND goalFloor
-		return Optional.empty();
+		throw new IllegalStateException();
 	}
 
 	/**
@@ -145,40 +119,33 @@ public class TaskManager {
 	 * @return
 	 */
 	public boolean shouldStop(double position, Direction direction, int goalFloor) {
-		taskLock.lock();
-		try {
-			boolean shouldStop = false;
-			int closestFloor = (int) Math.round(position);
 
-			// check if the true direction and the given direction is in conflict and goal floor != closest floor
-			if ((direction == Direction.UP) && (goalFloor < closestFloor))
-				return false;
+		boolean shouldStop = false;
+		int closestFloor = (int) Math.round(position);
 
-			if ((direction == Direction.DOWN) && (goalFloor > closestFloor))
-				return false;
+		// check if the true direction and the given direction is in conflict and goal floor != closest floor
+		if ((direction == Direction.UP) && (goalFloor < closestFloor))
+			return false;
 
-			Iterator<Task> iterator = tasks.iterator();
-			while (iterator.hasNext()) {
-				Task task = iterator.next();
-				// remove all inner tasks which wants to stop at this floor
-				if ((task.getTaskType() == TaskType.INSIDETASK) && (task.getGoalFloor().get() == closestFloor)) {
-					iterator.remove();
-					shouldStop = true;
-				}
-				// remove outside tasks which wants to travel in the same direction and who is waiting at the closing
-				// floor
-				if ((task.getTaskType() == TaskType.OUTSIDETASK) && (task.getDirection().get() == direction)
-						&& (task.getGoalFloor().get() == closestFloor)) {
-					iterator.remove();
-					shouldStop = true;
-				}
+		if ((direction == Direction.DOWN) && (goalFloor > closestFloor))
+			return false;
 
+		Iterator<Task> iterator = tasks.iterator();
+		while (iterator.hasNext()) {
+			Task task = iterator.next();
+			// remove all inner tasks which wants to stop at this floor
+			if ((task.getTaskType() == TaskType.INSIDETASK) && (task.getGoalFloor() == closestFloor)) {
+				iterator.remove();
+				shouldStop = true;
 			}
-
-			return shouldStop;
-		} finally {
-			taskLock.unlock();
+			// remove outside tasks which wants to travel in the same direction and who is waiting at the closing
+			// floor
+			if ((task.getTaskType() == TaskType.OUTSIDETASK) && (task.getDirection().get() == direction)
+					&& (task.getGoalFloor() == closestFloor)) {
+				iterator.remove();
+				shouldStop = true;
+			}
 		}
+		return shouldStop;
 	}
-
 }
