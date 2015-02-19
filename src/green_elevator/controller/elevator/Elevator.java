@@ -1,5 +1,7 @@
 package green_elevator.controller.elevator;
 
+import green_elevator.controller.message.Message;
+
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -64,6 +66,10 @@ public class Elevator implements Runnable {
 	    // TODO Auto-generated catch block
 	    e.printStackTrace();
 	}
+    }
+
+    public void addTask(Message message) {
+	// TODO implement
     }
 
     public double readPosition() {
