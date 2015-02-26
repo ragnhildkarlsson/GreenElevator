@@ -35,9 +35,11 @@ public class Elevator implements Runnable {
 
     private MessageBuffer outgoingMessages;
 
-    private final String upStopLimit = ".92";
-    private final String downStopLimit = ".039";
+    private final String upStopLimit = ".96";
+    private final String downStopLimit1 = ".039";
+    private final String downStopLimit2 = ".04";
     private final int doorOpenInterval = 2000;
+    private final boolean debug = true;
 
     public enum Direction {
 	UP, DOWN, STATIC
@@ -58,13 +60,14 @@ public class Elevator implements Runnable {
     public void run() {
 	while (!outOfOrder.get()) {
 	    double currentPosition = readPosition();
-	    Task task = taskManager.getTask(currentPosition);
+	    Task task = taskManager.getTask(currentPosition, readDirection());
 	    if (task.getTaskType() == TaskType.OUTSIDETASK) {
 		updateDirection(task.getDirection().get());
 		updateGoalFloor(task.getGoalFloor());
 	    }
 	    if (task.getTaskType() == TaskType.INSIDETASK) {
-		updateGoalFloor(readGoalFloor());
+		updateGoalFloor(task.getGoalFloor());
+		updateDirection(getMoveDirection(task.getGoalFloor(), getClosestFloor(currentPosition)));
 	    }
 	    moveToGoalFloor();
 
@@ -73,10 +76,10 @@ public class Elevator implements Runnable {
     }
 
     private void moveToGoalFloor() {
-	// Case elevator is on the wanted floor
 	double currentPosition = readPosition();
 	Direction currentDirection = readDirection();
 	int currentGoalFloor = readGoalFloor();
+	// Case elevator is on the wanted floor
 	if (taskManager.shouldStop(currentPosition, currentDirection, currentGoalFloor)) {
 	    performStopProcedure();
 	    if (getClosestFloor(currentPosition) == currentGoalFloor) {
@@ -84,12 +87,7 @@ public class Elevator implements Runnable {
 	    }
 	}
 	int closestFloor = getClosestFloor(currentPosition);
-	Direction moveDirection;
-	if (closestFloor < currentGoalFloor) {
-	    moveDirection = Direction.UP;
-	} else {
-	    moveDirection = Direction.DOWN;
-	}
+	Direction moveDirection = getMoveDirection(currentGoalFloor, closestFloor);
 	positionBuffer.clear();
 	sendMoveMessage(moveDirection);
 	while (true) {
@@ -98,7 +96,9 @@ public class Elevator implements Runnable {
 		sendStopMessage();
 		return;
 	    }
-	    if (isOnStopPosition(moveDirection, currentPosition))
+	    if (isOnStopPosition(moveDirection, currentPosition)) {
+		if (debug)
+		    System.out.println("Elvator " + id + " is on stop position ");
 		if (taskManager.shouldStop(currentPosition, currentDirection, currentGoalFloor)) {
 		    performStopProcedure();
 		    if (getClosestFloor(currentPosition) == currentGoalFloor)
@@ -106,7 +106,18 @@ public class Elevator implements Runnable {
 		    else
 			sendMoveMessage(moveDirection);
 		}
+	    }
 	}
+    }
+
+    private Direction getMoveDirection(int currentGoalFloor, int closestFloor) {
+	Direction moveDirection;
+	if (closestFloor < currentGoalFloor) {
+	    moveDirection = Direction.UP;
+	} else {
+	    moveDirection = Direction.DOWN;
+	}
+	return moveDirection;
     }
 
     /**
@@ -122,6 +133,11 @@ public class Elevator implements Runnable {
 	    e.printStackTrace();
 	}
 	outgoingMessages.putMessage(new DoorCloseCommand(id));
+	try {
+	    Thread.sleep(doorOpenInterval);
+	} catch (InterruptedException e) {
+	    e.printStackTrace();
+	}
     }
 
     private int getClosestFloor(double position) {
@@ -129,23 +145,28 @@ public class Elevator implements Runnable {
     }
 
     private void sendMoveMessage(Direction direction) {
+	if (debug)
+	    System.out.println("Elevator " + id + "sends moveMessage in direction " + direction);
 	Message message = new MoveCommand(id, direction);
 	outgoingMessages.putMessage(message);
     }
 
     private void sendStopMessage() {
+	if (debug)
+	    System.out.println("A stop message was sent from elevator " + id);
+
 	outgoingMessages.putMessage(new StopCommand(id));
     }
 
     private boolean isOnStopPosition(Direction direction, double position) {
-	String currentStopPositon;
-	if (direction == Direction.UP)
-	    currentStopPositon = upStopLimit;
-	else
-	    currentStopPositon = downStopLimit;
 	String currentPosition = Double.toString(position);
-	if (currentPosition.contains(currentStopPositon))
-	    return true;
+	if (direction == Direction.UP) {
+	    if (currentPosition.contains(upStopLimit))
+		return true;
+	} else {
+	    if ((currentPosition.contains(downStopLimit1)) || (currentPosition.contains(downStopLimit2)))
+		return true;
+	}
 	return false;
     }
 
@@ -212,7 +233,7 @@ public class Elevator implements Runnable {
 	try {
 	    return goalFloor;
 	} finally {
-	    goalFloorLock.lock();
+	    goalFloorLock.unlock();
 	}
     }
 
@@ -221,6 +242,8 @@ public class Elevator implements Runnable {
 	    Double newPosition = positionBuffer.take();
 	    positionLock.lock();
 	    try {
+		if (debug)
+		    System.out.println("Elevator id " + id + " updated to position " + position);
 		this.position = newPosition;
 		return this.position;
 	    } finally {
@@ -235,6 +258,8 @@ public class Elevator implements Runnable {
     private void updateDirection(Direction direction) {
 	directionLock.lock();
 	try {
+	    if (debug)
+		System.out.println("elevator " + id + " updated its direction");
 	    this.orderedDirection = direction;
 	} finally {
 	    directionLock.unlock();
@@ -244,6 +269,8 @@ public class Elevator implements Runnable {
     private void updateGoalFloor(int goalFloor) {
 	goalFloorLock.lock();
 	try {
+	    if (debug)
+		System.out.println("elevator " + id + " updated its goalfloor");
 	    this.goalFloor = goalFloor;
 	} finally {
 	    goalFloorLock.unlock();

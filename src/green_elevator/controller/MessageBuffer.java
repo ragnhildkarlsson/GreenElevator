@@ -8,10 +8,14 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class MessageBuffer {
 
     private BlockingQueue<Message> buffer;
-    private static final boolean debug = true;
+    private static final boolean debug = false;
+    private MesssageTranslator debugTranslator = new MesssageTranslator();
 
     public MessageBuffer() {
 	this.buffer = new LinkedBlockingQueue<Message>();
+	if (debug) {
+	    debugTranslator = new MesssageTranslator();
+	}
     }
 
     /**
@@ -24,6 +28,11 @@ public class MessageBuffer {
     public void putMessage(Message message) {
 	try {
 	    buffer.put(message);
+	    if (debug) {
+		System.out.println("a messaged was put");
+		if (debugTranslator.getMessageString(message).isPresent())
+		    System.out.println(debugTranslator.getMessageString(message).get());
+	    }
 	} catch (InterruptedException e) {
 	    // TODO Auto-generated catch block
 	    e.printStackTrace();

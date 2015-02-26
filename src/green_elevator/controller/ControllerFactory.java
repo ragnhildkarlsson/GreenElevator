@@ -58,13 +58,14 @@ public class ControllerFactory {
 	BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 	IndataReciever indataReciever = new IndataReciever(reader, incomingMessages, messsageTranslator);
 
-	outdataSender.run();
+	new Thread(outdataSender).start();
+	;
 	for (int i = 1; i <= nElevators; i++) {
-	    elevators.get(i).run();
+	    new Thread(elevators.get(i)).start();
 	}
-	evaluator.run();
-	indataDistributor.run();
-	indataReciever.run();
+	new Thread(evaluator).start();
+	new Thread(indataDistributor).start();
+	new Thread(indataReciever).start();
 
     }
 

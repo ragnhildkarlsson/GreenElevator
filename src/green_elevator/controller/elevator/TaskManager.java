@@ -17,6 +17,7 @@ public class TaskManager {
 
     private BlockingQueue<Task> tasks;
     private int taskId;
+    private final boolean debug = true;
 
     public TaskManager() {
 
@@ -30,20 +31,8 @@ public class TaskManager {
 	    InsideMessage insideMessage = (InsideMessage) command;
 	    int wantedFloor = insideMessage.getFloorNumber();
 	    try {
-		switch (direction) {
-		case UP:
-		    int lowestFloor = Math.min(goalFloor, (int) Math.round(currentPosition));
-		    if (lowestFloor < wantedFloor) {
-			tasks.put(new Task(getTaskID(), TaskType.INSIDETASK, Optional.empty(), wantedFloor));
-		    }
-		    break;
-		case DOWN:
-		    int highestFloor = Math.max(goalFloor, (int) Math.round(currentPosition));
-		    if (highestFloor > wantedFloor) {
-			tasks.put(new Task(getTaskID(), TaskType.INSIDETASK, Optional.empty(), wantedFloor));
-		    }
-		    break;
-		}
+		tasks.put(new Task(getTaskID(), TaskType.INSIDETASK, Optional.empty(), wantedFloor));
+
 	    } catch (InterruptedException e) {
 		e.printStackTrace();
 	    }
@@ -52,7 +41,8 @@ public class TaskManager {
 	if (command.getMessageType() == MessageType.OUTSIDEMESSAGE) {
 	    OutsideMessage outsideMessage = (OutsideMessage) command;
 	    int wantedFloor = outsideMessage.getFloorNumber();
-	    tasks.add(new Task(getTaskID(), TaskType.OUTSIDETASK, Optional.empty(), wantedFloor));
+	    tasks.add(new Task(getTaskID(), TaskType.OUTSIDETASK, Optional.of(outsideMessage.getDirection()),
+		    wantedFloor));
 	}
 	return true;
     }
@@ -73,12 +63,20 @@ public class TaskManager {
      * 
      * @return
      */
-    public Task getTask(double position) {
+    public Task getTask(double position, Direction direction) {
 	try {
 
 	    int presentFloor = (int) Math.round(position);
-
-	    // try to first find inside commands
+	    // try to first find inside commands in right direction
+	    for (Task task : tasks) {
+		if ((task.getTaskType() == TaskType.INSIDETASK)) {
+		    if (direction == direction.UP && task.getGoalFloor() > presentFloor)
+			return task;
+		    if ((direction == direction.DOWN && task.getGoalFloor() < presentFloor))
+			return task;
+		}
+	    }
+	    // Take any inside task
 	    for (Task task : tasks) {
 		if ((task.getTaskType() == TaskType.INSIDETASK))
 		    return task;
@@ -95,7 +93,9 @@ public class TaskManager {
 	    if (bestTask != null)
 		return bestTask;
 
-	    return tasks.take();
+	    bestTask = tasks.take();
+	    tasks.put(bestTask);
+	    return bestTask;
 	} catch (InterruptedException e) {
 	    e.printStackTrace();
 	}
@@ -141,6 +141,8 @@ public class TaskManager {
 
 	    if ((task.getTaskType() == TaskType.OUTSIDETASK) && (task.getDirection().get() == direction)
 		    && (task.getGoalFloor() == closestFloor)) {
+		if (debug)
+		    System.out.println("Taskmanager removed " + task.toString());
 		iterator.remove();
 		shouldStop = true;
 	    }

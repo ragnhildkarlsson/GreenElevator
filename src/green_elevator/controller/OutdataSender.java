@@ -9,11 +9,13 @@ public class OutdataSender implements Runnable {
     private MessageBuffer buffer;
     private PrintWriter writer;
     private MesssageTranslator translator;
+    private final boolean debug = true;
 
     public OutdataSender(OutputStream output, MessageBuffer buffer, MesssageTranslator translator) {
 
 	this.buffer = buffer;
 	this.writer = new PrintWriter(output, true);
+	this.translator = translator;
 
     }
 
@@ -30,7 +32,10 @@ public class OutdataSender implements Runnable {
 	    // buffer to be none empty.
 	    Optional<String> message = translator.getMessageString(buffer.getMessage());
 	    if (message.isPresent()) {
-		writer.print(message.get());
+		if (debug)
+		    System.out.println("Outdatasender sends " + message.get());
+		writer.println(message.get());
+		writer.flush();
 	    }
 
 	}

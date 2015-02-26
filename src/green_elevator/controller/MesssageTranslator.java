@@ -19,7 +19,8 @@ public class MesssageTranslator {
 	switch (message.getMessageType()) {
 	case MOVECOMMAND:
 	    MoveCommand moveCommand = (MoveCommand) message;
-	    return Optional.of("m " + moveCommand.getElevatorNumber() + " " + moveCommand.getDirection());
+	    return Optional.of("m " + moveCommand.getElevatorNumber() + " "
+		    + getDirectionNumber(moveCommand.getDirection()));
 	case STOPCOMMAND:
 	    StopCommand stopCommand = (StopCommand) message;
 	    return Optional.of("m " + stopCommand.getElevatorNumber() + " " + 0);
@@ -98,6 +99,17 @@ public class MesssageTranslator {
 	}
 	return Optional.empty();
 
+    }
+
+    private int getDirectionNumber(Direction direction) {
+	switch (direction) {
+	case UP:
+	    return 1;
+	case DOWN:
+	    return -1;
+	default:
+	    return 0;
+	}
     }
 
 }

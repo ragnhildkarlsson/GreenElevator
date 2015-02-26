@@ -10,8 +10,7 @@ public class StopCommand implements Message {
 
     @Override
     public MessageType getMessageType() {
-	// TODO Auto-generated method stub
-	return null;
+	return MessageType.STOPCOMMAND;
     }
 
     public int getElevatorNumber() {

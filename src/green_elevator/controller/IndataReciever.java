@@ -11,6 +11,7 @@ public class IndataReciever implements Runnable {
     private final BufferedReader reader;
     private final MessageBuffer outBuffer;
     private final MesssageTranslator messsageTranslator;
+    private final static boolean debug = false;
 
     public IndataReciever(BufferedReader reader, MessageBuffer outBuffer, MesssageTranslator messsageTranslator) {
 	this.reader = reader;
@@ -27,8 +28,12 @@ public class IndataReciever implements Runnable {
 	String input = "";
 	try {
 	    while ((input = reader.readLine()) != null) {
+		if (debug)
+		    System.out.println("Indatareciever: Recieved input " + input);
 		Optional<Message> message = messsageTranslator.getMessage(input);
 		if (message.isPresent()) {
+		    if (debug)
+			System.out.println(input + " created a messsage");
 		    outBuffer.putMessage(message.get());
 		}
 	    }
