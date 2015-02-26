@@ -8,6 +8,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class MessageBuffer {
 
     private BlockingQueue<Message> buffer;
+    private static final boolean debug = true;
 
     public MessageBuffer() {
 	this.buffer = new LinkedBlockingQueue<Message>();

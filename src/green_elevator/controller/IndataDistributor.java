@@ -5,21 +5,20 @@ import green_elevator.controller.message.Message;
 import green_elevator.controller.message.PositionMessage;
 import green_elevator.controller.message.StopMessage;
 
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class IndataDistributor implements Runnable {
 
     private final MessageBuffer incommingData;
     private final MessageBuffer commandBuffer;
-    private final Map<Integer, Elevator> elevators;
-    private final Evaluator evaluator;
+    private final ConcurrentHashMap<Integer, Elevator> elevators;
 
     public IndataDistributor(MessageBuffer incommingData, MessageBuffer commandBuffer,
-	    Map<Integer, Elevator> elevators, Evaluator evaluator) {
+	    ConcurrentHashMap<Integer, Elevator> elevators) {
 	this.incommingData = incommingData;
 	this.commandBuffer = commandBuffer;
 	this.elevators = elevators;
-	this.evaluator = evaluator;
+
     }
 
     @Override
@@ -43,12 +42,8 @@ public class IndataDistributor implements Runnable {
 		elevator.addTask(stopMessage);
 		break;
 	    default:
-		// TODO add task to evaluator
+		commandBuffer.putMessage(message);
 	    }
 	}
-
-	// TODO Auto-generated method stub
-
     }
-
 }

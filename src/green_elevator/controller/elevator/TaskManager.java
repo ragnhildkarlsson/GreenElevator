@@ -97,7 +97,6 @@ public class TaskManager {
 
 	    return tasks.take();
 	} catch (InterruptedException e) {
-	    // TODO Auto-generated catch block
 	    e.printStackTrace();
 	}
 	throw new IllegalStateException();
