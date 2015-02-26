@@ -27,7 +27,7 @@ public class OutdataSender implements Runnable {
 	while (true) {
 
 	    // getMessage is a blocking call so the thread will wait for the
-	    // buffer be none empty.
+	    // buffer to be none empty.
 	    Optional<String> message = translator.getMessageString(buffer.getMessage());
 	    if (message.isPresent()) {
 		writer.print(message.get());

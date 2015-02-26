@@ -1,9 +1,14 @@
 package green_elevator.controller.elevator;
 
+import green_elevator.controller.MessageBuffer;
 import green_elevator.controller.elevator.task.Task;
 import green_elevator.controller.elevator.task.Task.TaskType;
+import green_elevator.controller.message.DoorCloseCommand;
+import green_elevator.controller.message.DoorOpenCommand;
 import green_elevator.controller.message.Message;
 import green_elevator.controller.message.Message.MessageType;
+import green_elevator.controller.message.MoveCommand;
+import green_elevator.controller.message.StopCommand;
 
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -28,11 +33,17 @@ public class Elevator implements Runnable {
 
     private AtomicBoolean outOfOrder;
 
+    private MessageBuffer outgoingMessages;
+
+    private final String upStopLimit = ".92";
+    private final String downStopLimit = ".039";
+    private final int doorOpenInterval = 2000;
+
     public enum Direction {
 	UP, DOWN, STATIC
     }
 
-    public Elevator(TaskManager taskManager, int id) {
+    public Elevator(TaskManager taskManager, int id, MessageBuffer outgoingMessages) {
 	this.id = id;
 	this.taskManager = taskManager;
 	orderedDirection = Direction.UP;
@@ -40,11 +51,12 @@ public class Elevator implements Runnable {
 	positionBuffer = new LinkedBlockingQueue<Double>();
 	position = 0;
 	outOfOrder = new AtomicBoolean(false);
+	this.outgoingMessages = outgoingMessages;
     }
 
     @Override
     public void run() {
-	while (true) {
+	while (!outOfOrder.get()) {
 	    double currentPosition = readPosition();
 	    Task task = taskManager.getTask(currentPosition);
 	    if (task.getTaskType() == TaskType.OUTSIDETASK) {
@@ -54,39 +66,47 @@ public class Elevator implements Runnable {
 	    if (task.getTaskType() == TaskType.INSIDETASK) {
 		updateGoalFloor(readGoalFloor());
 	    }
+	    moveToGoalFloor();
+
 	}
 
-    }
-
-    // Task --loop
-    // wait for available task (if no task is available change direction to
-    // static)
-    // Fulfill task
-    // moveToGoalFloor() || or stopElevator()
-    //
-
-    /**
-     * Calculates the direction the elevator has to move to get from the
-     * currentPosition to the given floor
-     */
-    private Direction calculateDirection(int floor) {
-	int currentPosition = (int) Math.round(readPosition());
-
-	if (currentPosition < floor) {
-	    return Direction.UP;
-	}
-	if (currentPosition > floor) {
-	    return Direction.DOWN;
-	} else {
-	    return Direction.STATIC;
-	}
     }
 
     private void moveToGoalFloor() {
-	// send command to start elevator
-	// loop-for checking position
-	// for each place close to floor check shouldStop
-	// if stop on goal floor set goal floor to -1 return.
+	// Case elevator is on the wanted floor
+	double currentPosition = readPosition();
+	Direction currentDirection = readDirection();
+	int currentGoalFloor = readGoalFloor();
+	if (taskManager.shouldStop(currentPosition, currentDirection, currentGoalFloor)) {
+	    performStopProcedure();
+	    if (getClosestFloor(currentPosition) == currentGoalFloor) {
+		return;
+	    }
+	}
+	int closestFloor = getClosestFloor(currentPosition);
+	Direction moveDirection;
+	if (closestFloor < currentGoalFloor) {
+	    moveDirection = Direction.UP;
+	} else {
+	    moveDirection = Direction.DOWN;
+	}
+	positionBuffer.clear();
+	sendMoveMessage(moveDirection);
+	while (true) {
+	    currentPosition = updatePosition();
+	    if (outOfOrder.get()) {
+		sendStopMessage();
+		return;
+	    }
+	    if (isOnStopPosition(moveDirection, currentPosition))
+		if (taskManager.shouldStop(currentPosition, currentDirection, currentGoalFloor)) {
+		    performStopProcedure();
+		    if (getClosestFloor(currentPosition) == currentGoalFloor)
+			return;
+		    else
+			sendMoveMessage(moveDirection);
+		}
+	}
     }
 
     /**
@@ -94,7 +114,39 @@ public class Elevator implements Runnable {
      * close door command
      */
     private void performStopProcedure() {
+	sendStopMessage();
+	outgoingMessages.putMessage(new DoorOpenCommand(id));
+	try {
+	    Thread.sleep(doorOpenInterval);
+	} catch (InterruptedException e) {
+	    e.printStackTrace();
+	}
+	outgoingMessages.putMessage(new DoorCloseCommand(id));
+    }
 
+    private int getClosestFloor(double position) {
+	return (int) Math.round(position);
+    }
+
+    private void sendMoveMessage(Direction direction) {
+	Message message = new MoveCommand(id, direction);
+	outgoingMessages.putMessage(message);
+    }
+
+    private void sendStopMessage() {
+	outgoingMessages.putMessage(new StopCommand(id));
+    }
+
+    private boolean isOnStopPosition(Direction direction, double position) {
+	String currentStopPositon;
+	if (direction == Direction.UP)
+	    currentStopPositon = upStopLimit;
+	else
+	    currentStopPositon = downStopLimit;
+	String currentPosition = Double.toString(position);
+	if (currentPosition.contains(currentStopPositon))
+	    return true;
+	return false;
     }
 
     /**
@@ -164,16 +216,23 @@ public class Elevator implements Runnable {
 	}
     }
 
-    public void updatePostion(double position) {
-	positionLock.lock();
+    private double updatePosition() {
 	try {
-	    this.position = position;
-	} finally {
-	    positionLock.unlock();
+	    Double newPosition = positionBuffer.take();
+	    positionLock.lock();
+	    try {
+		this.position = newPosition;
+		return this.position;
+	    } finally {
+		positionLock.unlock();
+	    }
+	} catch (InterruptedException e) {
+	    e.printStackTrace();
 	}
+	throw new IllegalStateException();
     }
 
-    public void updateDirection(Direction direction) {
+    private void updateDirection(Direction direction) {
 	directionLock.lock();
 	try {
 	    this.orderedDirection = direction;
@@ -182,7 +241,7 @@ public class Elevator implements Runnable {
 	}
     }
 
-    public void updateGoalFloor(int goalFloor) {
+    private void updateGoalFloor(int goalFloor) {
 	goalFloorLock.lock();
 	try {
 	    this.goalFloor = goalFloor;

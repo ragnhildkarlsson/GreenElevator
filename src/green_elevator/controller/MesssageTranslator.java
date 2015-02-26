@@ -1,6 +1,8 @@
 package green_elevator.controller;
 
 import green_elevator.controller.elevator.Elevator.Direction;
+import green_elevator.controller.message.DoorCloseCommand;
+import green_elevator.controller.message.DoorOpenCommand;
 import green_elevator.controller.message.InsideMessage;
 import green_elevator.controller.message.Message;
 import green_elevator.controller.message.Message.MessageType;
@@ -21,6 +23,12 @@ public class MesssageTranslator {
 	case STOPCOMMAND:
 	    StopCommand stopCommand = (StopCommand) message;
 	    return Optional.of("m " + stopCommand.getElevatorNumber() + " " + 0);
+	case DOOROPENCOMMAND:
+	    DoorOpenCommand doorOpenCommand = (DoorOpenCommand) message;
+	    return Optional.of("d " + doorOpenCommand.getElevatorId() + " 1");
+	case DOORCLOSECOMMAND:
+	    DoorCloseCommand doorCloseCommand = (DoorCloseCommand) message;
+	    return Optional.of("d " + doorCloseCommand.getElevatorId() + " -1");
 	default:
 	    return Optional.empty();
 	}
