@@ -59,48 +59,58 @@ public class TaskManager {
     }
 
     /**
-     * Blocking call to get a task. Returns a task with the given
+     * Returns a task if any is available Inside task are prioritized first
+     * Outside tasks are prioritized second in distance order.
      * 
      * @return
      */
-    public Task getTask(double position, Direction direction) {
+    public Optional<Task> tryGetTask(double position, Direction direction) {
+	int presentFloor = (int) Math.round(position);
+	// try to first find inside commands in right direction
+	for (Task task : tasks) {
+	    if ((task.getTaskType() == TaskType.INSIDETASK)) {
+		if (direction == direction.UP && task.getGoalFloor() > presentFloor)
+		    return Optional.of(task);
+		if ((direction == direction.DOWN && task.getGoalFloor() < presentFloor))
+		    return Optional.of(task);
+	    }
+	}
+	// Take any inside task
+	for (Task task : tasks) {
+	    if ((task.getTaskType() == TaskType.INSIDETASK))
+		return Optional.of(task);
+	}
+	// Get the outside task that is closest to present position
+	Task bestTask = null;
+	int bestDiff = Integer.MAX_VALUE;
+	for (Task task : tasks) {
+	    if ((Math.abs(task.getGoalFloor() - presentFloor)) < bestDiff) {
+		bestDiff = Math.abs(task.getGoalFloor() - presentFloor);
+		bestTask = task;
+	    }
+	}
+	if (bestTask != null)
+	    return Optional.of(bestTask);
+	else
+	    return Optional.empty();
+    }
+
+    /**
+     * A blocking call that returns any available task;
+     * 
+     * @return
+     */
+    public Task waitForAnyNewTask() {
+	Task task;
 	try {
-
-	    int presentFloor = (int) Math.round(position);
-	    // try to first find inside commands in right direction
-	    for (Task task : tasks) {
-		if ((task.getTaskType() == TaskType.INSIDETASK)) {
-		    if (direction == direction.UP && task.getGoalFloor() > presentFloor)
-			return task;
-		    if ((direction == direction.DOWN && task.getGoalFloor() < presentFloor))
-			return task;
-		}
-	    }
-	    // Take any inside task
-	    for (Task task : tasks) {
-		if ((task.getTaskType() == TaskType.INSIDETASK))
-		    return task;
-	    }
-	    // Get the outside task that is closest to present position
-	    Task bestTask = null;
-	    int bestDiff = Integer.MAX_VALUE;
-	    for (Task task : tasks) {
-		if ((Math.abs(task.getGoalFloor() - presentFloor)) < bestDiff) {
-		    bestDiff = Math.abs(task.getGoalFloor() - presentFloor);
-		    bestTask = task;
-		}
-	    }
-	    if (bestTask != null)
-		return bestTask;
-
-	    bestTask = tasks.take();
-	    tasks.put(bestTask);
-	    return bestTask;
+	    task = tasks.take();
+	    tasks.put(task);
+	    return task;
 	} catch (InterruptedException e) {
+	    // TODO Auto-generated catch block
 	    e.printStackTrace();
 	}
 	throw new IllegalStateException();
-
     }
 
     /**

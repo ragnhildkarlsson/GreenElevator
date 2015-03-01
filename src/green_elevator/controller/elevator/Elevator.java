@@ -10,6 +10,7 @@ import green_elevator.controller.message.Message.MessageType;
 import green_elevator.controller.message.MoveCommand;
 import green_elevator.controller.message.StopCommand;
 
+import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
@@ -60,7 +61,14 @@ public class Elevator implements Runnable {
     public void run() {
 	while (!outOfOrder.get()) {
 	    double currentPosition = readPosition();
-	    Task task = taskManager.getTask(currentPosition, readDirection());
+	    Optional<Task> maybeTask = taskManager.tryGetTask(currentPosition, readDirection());
+	    Task task;
+	    if (maybeTask.isPresent())
+		task = maybeTask.get();
+	    else {
+		updateDirection(Direction.STATIC);
+		task = taskManager.waitForAnyNewTask();
+	    }
 	    if (task.getTaskType() == TaskType.OUTSIDETASK) {
 		updateDirection(task.getDirection().get());
 		updateGoalFloor(task.getGoalFloor());
@@ -275,5 +283,9 @@ public class Elevator implements Runnable {
 	} finally {
 	    goalFloorLock.unlock();
 	}
+    }
+
+    public int getId() {
+	return id;
     }
 }
