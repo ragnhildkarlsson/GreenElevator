@@ -10,6 +10,7 @@ import green_elevator.controller.message.MoveCommand;
 import green_elevator.controller.message.OutsideMessage;
 import green_elevator.controller.message.PositionMessage;
 import green_elevator.controller.message.StopCommand;
+import green_elevator.controller.message.StopMessage;
 
 import java.util.Optional;
 
@@ -63,6 +64,12 @@ public class MesssageTranslator {
 		double position = Double.parseDouble(messageWords[2]);
 		message = new PositionMessage(elevatorNumber, position);
 		return Optional.of(message);
+	    case STOPMESSAGE:
+		messageWords = input.split(" ");
+		elevatorNumber = Integer.parseInt(messageWords[1]);
+		message = new StopMessage(elevatorNumber);
+		return Optional.of(message);
+
 	    default:
 		return Optional.empty();
 	    }
@@ -73,6 +80,9 @@ public class MesssageTranslator {
 
     private Optional<MessageType> getMessageType(String input) {
 	if (input.contains("p")) {
+	    if (input.contains("32000")) {
+		return Optional.of(MessageType.STOPMESSAGE);
+	    }
 	    return Optional.of(MessageType.INSIDEMESSAGE);
 	}
 	if (input.contains("b")) {
